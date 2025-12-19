@@ -3,46 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidushi AI - Slow Speech Edition</title>
+    <title>Siya AI - Ancient Script Expert</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: black; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        
+        /* --- VIDEO LAYER --- */
         #video-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         video { width: 100%; height: 100%; object-fit: cover; position: absolute; display: none; }
         #silent-video { display: block; }
-        #selfie-video { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 5; transform: scaleX(-1); border: 4px solid #ff4500; }
+        
+        #camera-feed { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 5; border: 4px solid #008cff; }
         canvas { display: none; }
+
+        /* --- UI LAYER --- */
         .side-btn { position: fixed; top: 20px; right: 20px; z-index: 20; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.2); width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; justify-content: center; align-items: center; }
         .settings-box { background: #222; padding: 25px; border-radius: 15px; width: 90%; max-width: 350px; border: 1px solid #ff4500; color: white; text-align: center; }
+        
         input, select, textarea { width: 100%; padding: 10px; margin: 10px 0; background: #333; color: white; border: 1px solid #555; border-radius: 5px; box-sizing: border-box; }
         .save-btn { width: 100%; padding: 12px; background: #ff4500; border: none; font-weight: bold; cursor: pointer; color: white; border-radius: 5px; }
+
         #mic-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; align-items: center; width: 100%; }
         #status-text { color: white; margin-bottom: 15px; font-size: 14px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
         .controls-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: center; }
         .round-btn { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; font-size: 22px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        
         #mic-btn { width: 70px; height: 70px; background: #ff4500; font-size: 28px; }
         #gallery-btn { background: #00ff88; color: black; }
         #stop-speech-btn { background: #ff0000; }
         #vision-btn { background: #008cff; }
+        
         .listening { animation: pulse 1.5s infinite; background: red !important; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
     </style>
 </head>
 <body>
+
     <div id="video-container">
         <video id="silent-video" autoplay muted loop playsinline><source src="silent.mp4" type="video/mp4"></video>
         <video id="talking-video" muted loop playsinline><source src="talking.mp4" type="video/mp4"></video>
         <video id="thinking-video" muted loop playsinline><source src="thinking.mp4" type="video/mp4"></video>
         <video id="smiling-video" muted loop playsinline><source src="smiling.mp4" type="video/mp4"></video>
     </div>
-    <video id="selfie-video" autoplay playsinline></video>
+    
+    <video id="camera-feed" autoplay playsinline></video>
     <canvas id="canvas-capture"></canvas>
     <input type="file" id="gallery-input" accept="image/*" style="display:none" onchange="handleGalleryUpload(event)">
+
     <button class="side-btn" onclick="openSettings()"><i class="fas fa-cog"></i></button>
+
     <div id="settings-modal" class="modal">
         <div class="settings-box">
-            <h3>વિદુષી સેટિંગ્સ</h3>
+            <h3>સિયા AI સેટિંગ્સ</h3>
             <input type="text" id="userNameInput" placeholder="તમારું નામ">
             <select id="geminiModelSelect">
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
@@ -53,6 +67,7 @@
             <button class="save-btn" onclick="saveSettings()">સેવ કરો</button>
         </div>
     </div>
+
     <div id="mic-container">
         <div id="status-text">જય શ્રી કૃષ્ણ</div>
         <div class="controls-row">
@@ -62,62 +77,181 @@
             <button id="vision-btn" class="round-btn" title="કેમેરો" onclick="activateVision()"><i class="fas fa-camera"></i></button>
         </div>
     </div>
+
     <script>
-        let userName = localStorage.getItem('vidushi_username') || "સાહેબ"
-        let geminiKeys = localStorage.getItem('vidushi_gemini_key') || ""
-        let selectedModel = localStorage.getItem('vidushi_model') || "gemini-2.5-flash"
-        const videos = { silent: document.getElementById('silent-video'), talking: document.getElementById('talking-video'), thinking: document.getElementById('thinking-video'), smiling: document.getElementById('smiling-video') }
-        const statusText = document.getElementById('status-text')
-        const selfieVideo = document.getElementById('selfie-video')
-        const canvas = document.getElementById('canvas-capture')
-        let recognition, isAiSpeaking = false, visionMode = false, currentVisionPrompt = ""
-        window.onload = () => { playVideo('smiling'); setTimeout(() => { speak(`જય શ્રી કૃષ્ણ અવાજ હવે ધીમો કરી દીધો છે`) }, 1000) }
-        function playVideo(type) { Object.values(videos).forEach(v => { v.style.display = 'none'; v.pause() }); if(videos[type]) { videos[type].style.display = 'block'; videos[type].play().catch(()=>{}) } }
+        let userName = localStorage.getItem('vidushi_username') || "દેવેન્દ્રભાઈ";
+        let geminiKeys = localStorage.getItem('vidushi_gemini_key') || "";
+        let selectedModel = localStorage.getItem('vidushi_model') || "gemini-2.5-flash";
+        
+        const videos = {
+            silent: document.getElementById('silent-video'),
+            talking: document.getElementById('talking-video'),
+            thinking: document.getElementById('thinking-video'),
+            smiling: document.getElementById('smiling-video')
+        };
+        const statusText = document.getElementById('status-text');
+        const cameraFeed = document.getElementById('camera-feed');
+        const canvas = document.getElementById('canvas-capture');
+
+        let recognition, isAiSpeaking = false, visionMode = false, currentVisionPrompt = "", cameraStream = null;
+
+        window.onload = () => {
+            playVideo('smiling');
+            setTimeout(() => { 
+                speak(`જય શ્રી કૃષ્ણ ${userName} મારું નામ સિયા છે આજે આપણે કઈ લિપિ ઉકેલવી છે`); 
+            }, 1000);
+        };
+
+        function playVideo(type) {
+            Object.values(videos).forEach(v => { v.style.display = 'none'; v.pause(); });
+            if(videos[type]) { 
+                videos[type].style.display = 'block'; 
+                videos[type].play().catch(()=>{}); 
+            }
+        }
+
         function speak(text) {
-            window.speechSynthesis.cancel()
-            let clean = text.replace(/[.,!?;:*#_]/g, "")
-            isAiSpeaking = true
-            const u = new SpeechSynthesisUtterance(clean)
-            u.lang = 'gu-IN'
-            u.rate = 0.7 // અવાજની ગતિ ધીમી કરી
-            u.onstart = () => playVideo('talking')
-            u.onend = () => { if(isAiSpeaking) { playVideo('smiling'); isAiSpeaking = false; setTimeout(() => { playVideo('silent') }, 3000) } }
-            window.speechSynthesis.speak(u)
+            window.speechSynthesis.cancel();
+            let clean = text.replace(/[.,!?;:*#_]/g, "");
+            isAiSpeaking = true;
+            const u = new SpeechSynthesisUtterance(clean);
+            u.lang = 'gu-IN';
+            u.rate = 0.7; // ધીમી સ્પીચ
+            u.onstart = () => playVideo('talking');
+            u.onend = () => { 
+                if(isAiSpeaking) {
+                    playVideo('smiling'); 
+                    isAiSpeaking = false; 
+                    setTimeout(() => { playVideo('silent'); }, 3000);
+                }
+            };
+            window.speechSynthesis.speak(u);
         }
-        function stopSpeech() { window.speechSynthesis.cancel(); isAiSpeaking = false; playVideo('silent'); statusText.innerText = "અવાજ બંધ કર્યો" }
-        function handleGalleryUpload(event) {
-            const file = event.target.files[0]; if (!file) return
-            const reader = new FileReader()
-            reader.onload = async (e) => { const base64Image = e.target.result.split(',')[1]; playVideo('thinking'); statusText.innerText = "ઉકેલી રહી છું..."; currentVisionPrompt = "આ હસ્તલિપિ ઉકેલીને ગુજરાતીમાં સમજાવો"; await askGeminiVision(base64Image) }
-            reader.readAsDataURL(file)
+
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+            isAiSpeaking = false;
+            playVideo('silent');
+            statusText.innerText = "અવાજ બંધ કર્યો";
         }
-        async function askGeminiVision(base64) {
-            const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k); if(!keys.length) return speak("કી નથી")
-            const key = keys[Math.floor(Math.random() * keys.length)]
+
+        // --- CAMERA LOGIC (FIXED) ---
+        async function activateVision() {
+            if(visionMode) { 
+                captureAndAnalyze(); 
+                return; 
+            }
+            
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: currentVisionPrompt }, { inline_data: { mime_type: "image/jpeg", data: base64 } }] }] }) })
-                const data = await res.json(); speak(data.candidates[0].content.parts[0].text)
-            } catch(e) { speak("ક્ષમા કરજો અત્યારે તકલીફ છે") }
+                statusText.innerText = "કેમેરો ખુલે છે...";
+                // પાછળનો કેમેરો ખોલવા માટે environment મોડ
+                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                cameraFeed.srcObject = cameraStream;
+                cameraFeed.style.display = 'block';
+                visionMode = true;
+                statusText.innerText = "ફોટો પાડવા કેમેરા બટન દબાવો";
+                speak("કૃપા કરીને લિપિ સામે કેમેરો રાખો");
+            } catch(e) {
+                console.error(e);
+                alert("કેમેરો ખોલવામાં સમસ્યા છે. મહેરબાની કરીને પરમિશન ચેક કરો.");
+            }
         }
-        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; document.getElementById('userNameInput').value = userName; document.getElementById('geminiKeyInput').value = geminiKeys; document.getElementById('geminiModelSelect').value = selectedModel }
-        function saveSettings() { localStorage.setItem('vidushi_username', document.getElementById('userNameInput').value); localStorage.setItem('vidushi_gemini_key', document.getElementById('geminiKeyInput').value); localStorage.setItem('vidushi_model', document.getElementById('geminiModelSelect').value); location.reload() }
+
+        async function captureAndAnalyze() {
+            canvas.width = cameraFeed.videoWidth;
+            canvas.height = cameraFeed.videoHeight;
+            canvas.getContext('2d').drawImage(cameraFeed, 0, 0);
+            
+            // કેમેરો બંધ કરવો
+            if(cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+            cameraFeed.style.display = 'none';
+            visionMode = false;
+            
+            playVideo('thinking');
+            statusText.innerText = "વિશ્લેષણ કરી રહી છું...";
+            
+            const base64Image = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+            currentVisionPrompt = "તું એક પ્રાચીન લિપિ નિષ્ણાત છે આ હસ્તલિપિ ઓળખી તેનું ગુજરાતીમાં ભાષાંતર કર અને અર્થ સમજાવ";
+            await askGeminiVision(base64Image);
+        }
+
+        // --- GALLERY LOGIC ---
+        function handleGalleryUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64Image = e.target.result.split(',')[1];
+                playVideo('thinking');
+                statusText.innerText = "ગેલેરી ફોટો ઉકેલી રહી છું...";
+                currentVisionPrompt = "આ હસ્તલિપિ ઉકેલીને ગુજરાતીમાં સમજાવો";
+                await askGeminiVision(base64Image);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function askGeminiVision(base64) {
+            const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
+            if(!keys.length) return speak("સેટિંગ્સમાં API કી ઉમેરો");
+            const key = keys[Math.floor(Math.random() * keys.length)];
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: currentVisionPrompt }, { inline_data: { mime_type: "image/jpeg", data: base64 } }] }] })
+                });
+                const data = await res.json();
+                speak(data.candidates[0].content.parts[0].text);
+            } catch(e) { speak("ક્ષમા કરજો, સર્વર સાથે જોડાણ થઈ શકતું નથી"); }
+        }
+
+        // --- SETTINGS ---
+        function openSettings() { 
+            document.getElementById('settings-modal').style.display = 'flex';
+            document.getElementById('userNameInput').value = userName;
+            document.getElementById('geminiKeyInput').value = geminiKeys;
+            document.getElementById('geminiModelSelect').value = selectedModel;
+        }
+        function saveSettings() {
+            localStorage.setItem('vidushi_username', document.getElementById('userNameInput').value);
+            localStorage.setItem('vidushi_gemini_key', document.getElementById('geminiKeyInput').value);
+            localStorage.setItem('vidushi_model', document.getElementById('geminiModelSelect').value);
+            location.reload();
+        }
+
+        // --- VOICE ---
         function startConversation() { 
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if(!SpeechRecognition) return
-            recognition = new SpeechRecognition(); recognition.lang = 'gu-IN'
-            recognition.onstart = () => { statusText.innerText = "સાંભળું છું..." }
-            recognition.onresult = (e) => { let text = e.results[0][0].transcript; if(text.includes("બંધ કર")) stopSpeech(); else processTextCommand(text) }
-            recognition.start()
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!SpeechRecognition) return alert("માઈક સપોર્ટ નથી");
+            recognition = new SpeechRecognition();
+            recognition.lang = 'gu-IN';
+            recognition.onstart = () => { statusText.innerText = "સિયા સાંભળે છે..."; micBtn.classList.add('listening'); };
+            recognition.onend = () => { micBtn.classList.remove('listening'); };
+            recognition.onresult = (e) => { 
+                let text = e.results[0][0].transcript;
+                if(text.includes("બંધ કર") || text.includes("ચૂપ")) stopSpeech();
+                else processTextCommand(text);
+            };
+            recognition.start();
         }
         async function processTextCommand(text) {
-            playVideo('thinking')
-            const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k)
-            const key = keys[Math.floor(Math.random() * keys.length)]
+            playVideo('thinking');
+            const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
+            const key = keys[Math.floor(Math.random() * keys.length)];
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: "તારું નામ વિદુષી છે ગુજરાતીમાં પંચ્યુએશન વગર ટૂંકો જવાબ આપ " + text }] }] }) })
-                const data = await res.json(); speak(data.candidates[0].content.parts[0].text)
-            } catch(e) { speak("ભૂલ છે") }
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "તારું નામ સિયા છે ગુજરાતીમાં પંચ્યુએશન વગર જવાબ આપ: " + text }] }] })
+                });
+                const data = await res.json();
+                speak(data.candidates[0].content.parts[0].text);
+            } catch(e) { speak("નેટવર્ક ચેક કરો"); }
         }
-        async function activateVision() { /* કેમેરા લોજીક */ }
     </script>
 </body>
 </html>
