@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Siya AI V2 - Optimized</title>
+    <title>Siya AI V2 - Fast Edition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: black; font-family: 'Segoe UI', sans-serif; user-select: none; }
@@ -15,27 +15,20 @@
         .side-btn { position: fixed; top: 20px; right: 20px; z-index: 20; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.2); width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; justify-content: center; align-items: center; }
         .settings-box { background: #222; padding: 25px; border-radius: 15px; width: 90%; max-width: 350px; border: 1px solid #ff4500; color: white; text-align: center; }
-        #report-modal { overflow-y: auto; }
-        .report-box { background: #fff; color: #333; padding: 25px; border-radius: 20px; width: 95%; max-width: 600px; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .report-header { text-align: center; border-bottom: 2px solid #ff4500; margin-bottom: 15px; padding-bottom: 10px; }
-        .report-header h2 { color: #ff4500; margin: 0; font-size: 22px; }
-        .report-content { line-height: 1.6; font-size: 16px; max-height: 400px; overflow-y: auto; padding-right: 10px; }
-        .report-footer { display: flex; gap: 10px; margin-top: 20px; }
-        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .report-box { background: #fff; color: #333; padding: 25px; border-radius: 20px; width: 95%; max-width: 600px; text-align: left; }
+        #report-body { line-height: 1.6; font-size: 16px; max-height: 400px; overflow-y: auto; }
+        .action-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .copy-btn { background: #008cff; color: white; }
         .close-btn { background: #333; color: white; }
-        input, select, textarea { width: 100%; padding: 10px; margin: 10px 0; background: #333; color: white; border: 1px solid #555; border-radius: 5px; box-sizing: border-box; }
-        .save-btn { width: 100%; padding: 12px; background: #ff4500; border: none; font-weight: bold; cursor: pointer; color: white; border-radius: 5px; }
-        #mic-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; align-items: center; width: 100%; }
-        #status-text { color: white; margin-bottom: 15px; font-size: 14px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
-        .controls-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; justify-content: center; }
-        .round-btn { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; font-size: 22px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        #mic-btn { width: 70px; height: 70px; background: #ff4500; font-size: 28px; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 10px 0; background: #333; color: white; border: 1px solid #555; border-radius: 5px; }
+        .save-btn { width: 100%; padding: 12px; background: #ff4500; border: none; color: white; font-weight: bold; cursor: pointer; }
+        #mic-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; align-items: center; }
+        #status-text { color: white; margin-bottom: 15px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; }
+        .controls-row { display: flex; gap: 15px; }
+        .round-btn { width: 55px; height: 55px; border-radius: 50%; border: none; color: white; font-size: 22px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        #mic-btn { background: #ff4500; }
         #gallery-btn { background: #00ff88; color: black; }
-        #stop-speech-btn { background: #ff0000; }
         #vision-btn { background: #008cff; }
-        .listening { animation: pulse 1.5s infinite; background: red !important; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
     </style>
 </head>
 <body>
@@ -55,30 +48,23 @@
 
     <div id="settings-modal" class="modal">
         <div class="settings-box">
-            <h3>સિયા AI સેટિંગ્સ</h3>
+            <h3>સેટિંગ્સ</h3>
             <input type="text" id="userNameInput" placeholder="તમારું નામ">
             <select id="geminiModelSelect">
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                 <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             </select>
-            <textarea id="geminiKeyInput" rows="3" placeholder="API Keys..."></textarea>
+            <textarea id="geminiKeyInput" rows="3" placeholder="API Key..."></textarea>
             <button class="save-btn" onclick="saveSettings()">સેવ કરો</button>
         </div>
     </div>
 
     <div id="report-modal" class="modal">
         <div class="report-box">
-            <div class="report-header">
-                <h2>પૌરાણિક લિપિ વિશ્લેષણ</h2>
-                <small id="report-date"></small>
-            </div>
-            <div id="report-body" class="report-content">વિશ્લેષણ ચાલુ છે...</div>
-            <div class="report-footer">
-                <button class="action-btn copy-btn" onclick="copyReport()"><i class="fas fa-copy"></i> કોપી</button>
-                <button class="action-btn close-btn" onclick="closeReport()">બંધ કરો</button>
-            </div>
+            <h2 style="text-align:center; color:#ff4500;">વિશ્લેષણ રિપોર્ટ</h2>
+            <div id="report-body">વિશ્લેષણ ચાલુ છે...</div>
+            <button class="action-btn copy-btn" onclick="copyReport()">કોપી</button>
+            <button class="action-btn close-btn" onclick="closeReport()">બંધ કરો</button>
         </div>
     </div>
 
@@ -87,7 +73,6 @@
         <div class="controls-row">
             <button id="gallery-btn" class="round-btn" onclick="document.getElementById('gallery-input').click()"><i class="fas fa-image"></i></button>
             <button id="mic-btn" class="round-btn" onclick="startConversation()"><i class="fas fa-microphone"></i></button>
-            <button id="stop-speech-btn" class="round-btn" onclick="stopSpeech()"><i class="fas fa-volume-mute"></i></button>
             <button id="vision-btn" class="round-btn" onclick="activateVision()"><i class="fas fa-camera"></i></button>
         </div>
     </div>
@@ -95,7 +80,7 @@
     <script>
         let userName = localStorage.getItem('vidushi_username') || "દેવેન્દ્રભાઈ";
         let geminiKeys = localStorage.getItem('vidushi_gemini_key') || "";
-        let selectedModel = localStorage.getItem('vidushi_model') || "gemini-2.5-flash";
+        let selectedModel = localStorage.getItem('vidushi_model') || "gemini-2.0-flash";
         
         const videos = {
             silent: document.getElementById('silent-video'),
@@ -107,12 +92,7 @@
         const cameraFeed = document.getElementById('camera-feed');
         const canvas = document.getElementById('canvas-capture');
 
-        let isAiSpeaking = false, visionMode = false, cameraStream = null;
-
-        window.onload = () => {
-            playVideo('smiling');
-            setTimeout(() => { speak(`જય શ્રી કૃષ્ણ ${userName} મારું નામ સિયા છે આજે આપણે કઈ લિપિ ઉકેલવી છે`); }, 1000);
-        };
+        window.onload = () => { playVideo('smiling'); speak(`જય શ્રી કૃષ્ણ ${userName}`); };
 
         function playVideo(type) {
             Object.values(videos).forEach(v => { v.style.display = 'none'; v.pause(); });
@@ -121,117 +101,86 @@
 
         function speak(text) {
             window.speechSynthesis.cancel();
-            let clean = text.replace(/[.,!?;:*#_]/g, "");
-            isAiSpeaking = true;
-            const u = new SpeechSynthesisUtterance(clean);
+            const u = new SpeechSynthesisUtterance(text.replace(/[#*_]/g, ""));
             u.lang = 'gu-IN';
-            u.rate = 0.8;
             u.onstart = () => playVideo('talking');
-            u.onend = () => { if(isAiSpeaking) { playVideo('smiling'); isAiSpeaking = false; setTimeout(() => { if(!isAiSpeaking) playVideo('silent'); }, 3000); } };
+            u.onend = () => playVideo('silent');
             window.speechSynthesis.speak(u);
         }
 
-        function stopSpeech() { window.speechSynthesis.cancel(); isAiSpeaking = false; playVideo('silent'); statusText.innerText = "અવાજ બંધ કર્યો"; }
-        function closeReport() { document.getElementById('report-modal').style.display = 'none'; stopSpeech(); }
-        function copyReport() { const text = document.getElementById('report-body').innerText; navigator.clipboard.writeText(text); alert("રિપોર્ટ કોપી થઈ ગયો છે"); }
-
-        async function activateVision() {
-            if(visionMode) { captureAndAnalyze(); return; }
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                cameraFeed.srcObject = cameraStream;
-                cameraFeed.style.display = 'block';
-                visionMode = true;
-                statusText.innerText = "કેમેરા સામે લિપિ રાખો";
-                speak("કૃપા કરીને લિપિ સામે કેમેરો રાખો અને બટન દબાવો");
-            } catch(e) { alert("કેમેરો ખોલવામાં નિષ્ફળ"); }
-        }
-
-        async function captureAndAnalyze() {
-            canvas.width = cameraFeed.videoWidth;
-            canvas.height = cameraFeed.videoHeight;
-            canvas.getContext('2d').drawImage(cameraFeed, 0, 0);
-            if(cameraStream) cameraStream.getTracks().forEach(track => track.stop());
-            cameraFeed.style.display = 'none';
-            visionMode = false;
-            generateSiyaReport(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
-        }
+        function closeReport() { document.getElementById('report-modal').style.display = 'none'; }
+        function copyReport() { navigator.clipboard.writeText(document.getElementById('report-body').innerText); alert("કોપી થઈ ગયું"); }
 
         function handleGalleryUpload(event) {
             const file = event.target.files[0];
-            if (!file) return;
             const reader = new FileReader();
             reader.onload = (e) => generateSiyaReport(e.target.result.split(',')[1]);
             reader.readAsDataURL(file);
         }
 
-        // --- સુધારેલું ઈમેજ એન્હાન્સમેન્ટ ફંક્શન (Resizing + Error Handling) ---
-        function enhanceImage(base64Str, callback) {
+        async function generateSiyaReport(base64) {
+            playVideo('thinking');
+            statusText.innerText = "માહિતી મોકલી રહ્યા છીએ...";
+            
+            // ઈમેજ સાઈઝ પ્રોસેસિંગ
             const img = new Image();
-            img.onerror = () => { statusText.innerText = "ઈમેજ એરર"; playVideo('silent'); };
-            img.onload = function() {
+            img.onload = async function() {
                 const tempCanvas = document.createElement('canvas');
                 const ctx = tempCanvas.getContext('2d');
-                let width = img.width, height = img.height;
-                const maxDim = 1024; // પ્રોસેસિંગ સ્પીડ વધારવા માટે લિમિટ
-                if (width > maxDim || height > maxDim) {
-                    if (width > height) { height *= maxDim / width; width = maxDim; }
-                    else { width *= maxDim / height; height = maxDim; }
+                const maxDim = 800; // નાની સાઈઝ જેથી અટકે નહીં
+                let w = img.width, h = img.height;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) { h *= maxDim / w; w = maxDim; } else { w *= maxDim / h; h = maxDim; }
                 }
-                tempCanvas.width = width; tempCanvas.height = height;
-                ctx.filter = 'contrast(1.6) brightness(1.1) grayscale(100%)';
-                ctx.drawImage(img, 0, 0, width, height);
-                callback(tempCanvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
-            };
-            img.src = "data:image/jpeg;base64," + base64Str;
-        }
+                tempCanvas.width = w; tempCanvas.height = h;
+                ctx.drawImage(img, 0, 0, w, h);
+                const optimizedBase64 = tempCanvas.toDataURL('image/jpeg', 0.5).split(',')[1];
 
-        async function generateSiyaReport(originalBase64) {
-            playVideo('thinking');
-            statusText.innerText = "ડિજિટલ પ્રોસેસિંગ...";
-            
-            enhanceImage(originalBase64, async (enhancedBase64) => {
-                statusText.innerText = "AI વિશ્લેષણ ચાલુ છે...";
-                const prompt = `તારું નામ સિયા છે તું પ્રાચીન લિપિ નિષ્ણાત છે સાવધાન આ એક નવો અને અલગ ફોટો છે આગળની કોઈ માહિતીને ધ્યાનમાં લીધા વગર માત્ર આ ફોટામાં દેખાતા અક્ષરો અને વિગતોનું જ વિશ્લેષણ કરજે જો વંશાવલી હોય તો નવા નામો અને ગામ ઓળખજે જો પાળિયો હોય તો તિથિ અને વાર જણાવજે ગુજરાતીમાં પંચ્યુએશન માર્ક વગર મુદ્દાસર રિપોર્ટ આપજે`;
-
-                const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
-                if(!keys.length) return speak("API કી ઉમેરો");
-                const key = keys[Math.floor(Math.random() * keys.length)];
+                const prompt = "તારું નામ સિયા છે. આ ફોટામાં દેખાતા અક્ષરો અને વિગતોનું તટસ્થ વિશ્લેષણ કરી ગુજરાતીમાં મુદ્દાસર રિપોર્ટ આપ. કોઈ જૂના નામ યાદ રાખીશ નહીં.";
+                const key = geminiKeys.split(',')[0].trim();
 
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 સેકન્ડ ટાઈમઆઉટ
-
                     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: enhancedBase64 } }] }] }),
-                        signal: controller.signal
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: optimizedBase64 } }] }] })
                     });
-                    clearTimeout(timeoutId);
                     const data = await res.json();
-                    
-                    if (data.candidates && data.candidates[0].content.parts[0].text) {
-                        const reportText = data.candidates[0].content.parts[0].text;
-                        document.getElementById('report-date').innerText = new Date().toLocaleDateString('gu-IN');
-                        document.getElementById('report-body').innerHTML = reportText.split('\n').map(line => `<p>${line}</p>`).join('');
-                        document.getElementById('report-modal').style.display = 'flex';
-                        playVideo('smiling');
-                        statusText.innerText = "રિપોર્ટ તૈયાર છે";
-                        speak("મેં લિપિનું વિશ્લેષણ કરી લીધું છે");
-                    }
-                } catch(e) { 
-                    statusText.innerText = "કનેક્શન એરર";
-                    speak("વિશ્લેષણ સમયસીમા સમાપ્ત થઈ અથવા નેટવર્ક એરર છે");
+                    const text = data.candidates[0].content.parts[0].text;
+                    document.getElementById('report-body').innerHTML = text.split('\n').map(p => `<p>${p}</p>`).join('');
+                    document.getElementById('report-modal').style.display = 'flex';
+                    playVideo('smiling');
+                    statusText.innerText = "રિપોર્ટ તૈયાર";
+                    speak("વિશ્લેષણ પૂર્ણ થયું છે");
+                } catch(e) {
+                    statusText.innerText = "એરર!";
+                    speak("API કી અથવા ઇન્ટરનેટ તપાસો");
                     playVideo('silent');
                 }
-            });
+            };
+            img.src = "data:image/jpeg;base64," + base64;
         }
 
-        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; document.getElementById('userNameInput').value = userName; document.getElementById('geminiKeyInput').value = geminiKeys; document.getElementById('geminiModelSelect').value = selectedModel; }
-        function saveSettings() { localStorage.setItem('vidushi_username', document.getElementById('userNameInput').value); localStorage.setItem('vidushi_gemini_key', document.getElementById('geminiKeyInput').value); localStorage.setItem('vidushi_model', document.getElementById('geminiModelSelect').value); location.reload(); }
-        function startConversation() { const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; if(!SpeechRecognition) return alert("માઈક સપોર્ટ નથી"); recognition = new SpeechRecognition(); recognition.lang = 'gu-IN'; recognition.onstart = () => { statusText.innerText = "સિયા સાંભળે છે..."; document.getElementById('mic-btn').classList.add('listening'); }; recognition.onend = () => { document.getElementById('mic-btn').classList.remove('listening'); }; recognition.onresult = (e) => { processTextCommand(e.results[0][0].transcript); }; recognition.start(); }
-        async function processTextCommand(text) { playVideo('thinking'); const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k); const key = keys[Math.floor(Math.random() * keys.length)]; try { const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: "તારું નામ સિયા છે પંચ્યુએશન વગર ગુજરાતીમાં જવાબ આપ: " + text }] }] }) }); const data = await res.json(); speak(data.candidates[0].content.parts[0].text); } catch(e) { speak("નેટવર્ક ચેક કરો"); } }
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
+        function saveSettings() {
+            localStorage.setItem('vidushi_username', document.getElementById('userNameInput').value);
+            localStorage.setItem('vidushi_gemini_key', document.getElementById('geminiKeyInput').value);
+            localStorage.setItem('vidushi_model', document.getElementById('geminiModelSelect').value);
+            location.reload();
+        }
+
+        function startConversation() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'gu-IN';
+            recognition.onstart = () => { statusText.innerText = "સાંભળું છું..."; };
+            recognition.onresult = (e) => { 
+                const text = e.results[0][0].transcript;
+                statusText.innerText = "વિચારી રહી છું...";
+                // અહીં તમે જનરલ ચેટ ફંક્શન ઉમેરી શકો
+                speak("તમે કહ્યું: " + text);
+            };
+            recognition.start();
+        }
     </script>
 </body>
 </html>
