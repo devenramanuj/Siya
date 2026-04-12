@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siya AI - Ancient Script Expert</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- OpenCV.js ઉમેર્યું -->
+    <script async src="https://docs.opencv.org/4.1.0/opencv.js" onload="onOpenCvReady()"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: black; font-family: 'Segoe UI', sans-serif; user-select: none; }
         
@@ -14,7 +16,7 @@
         #silent-video { display: block; }
         
         #camera-feed { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 5; border: 4px solid #008cff; }
-        canvas { display: none; }
+        canvas { display: none; } /* આને કદાચ છુપાવવાને બદલે tempCanvas તરીકે ઉપયોગ કરી શકાય */
 
         /* --- UI LAYER --- */
         .side-btn { position: fixed; top: 20px; right: 20px; z-index: 20; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.2); width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
@@ -46,7 +48,6 @@
         #gallery-btn { background: #00ff88; color: black; }
         #stop-speech-btn { background: #ff0000; }
         #vision-btn { background: #008cff; }
-        /* નવું: કેમેરા મોડમાં કેપ્ચર બટન */
         #capture-btn { background: #ff4500; display: none; } 
         
         .listening { animation: pulse 1.5s infinite; background: red !important; }
@@ -127,6 +128,14 @@
         const captureButton = document.getElementById('capture-btn');
 
         let isAiSpeaking = false, visionMode = false, cameraStream = null, recognition = null;
+        let opencvInitialized = false; // OpenCV ઇનિશિયલાઇઝ થયું છે કે નહીં તેનો ટ્રેક રાખવા
+
+        // OpenCV લાઇબ્રેરી લોડ થયા પછી આ ફંક્શન કોલ થશે
+        function onOpenCvReady() {
+            opencvInitialized = true;
+            console.log("OpenCV.js is ready!");
+            // તમે અહીં કોઈ પ્રારંભિક OpenCV કાર્ય કરી શકો છો, જો જરૂરી હોય તો
+        }
 
         window.onload = () => {
             Object.values(videos).forEach(video => {
@@ -242,7 +251,17 @@
             captureButton.style.display = 'none';
             visionMode = false;
 
-            generateSiyaReport(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]); // ગુણવત્તા 0.7 થી 0.8 કરી
+            // OpenCV પ્રી-પ્રોસેસિંગ લાગુ કરો
+            const originalBase64 = canvas.toDataURL('image/jpeg', 0.9); // ઉચ્ચ ગુણવત્તા
+            if (opencvInitialized) {
+                statusText.innerText = "છબી પ્રક્રિયા કરી રહ્યું છે...";
+                const preprocessedBase64 = await preprocessImage(originalBase64);
+                generateSiyaReport(preprocessedBase64);
+            } else {
+                // જો OpenCV લોડ ન થયું હોય તો સીધી જ મૂળ છબી મોકલો
+                console.warn("OpenCV.js not initialized, sending original image.");
+                generateSiyaReport(originalBase64.split(',')[1]);
+            }
         }
 
         function handleGalleryUpload(event) {
@@ -253,7 +272,17 @@
             playVideo('thinking');
 
             const reader = new FileReader();
-            reader.onload = (e) => generateSiyaReport(e.target.result.split(',')[1]);
+            reader.onload = async (e) => { // async બનાવ્યું
+                const originalBase64 = e.target.result;
+                if (opencvInitialized) {
+                    statusText.innerText = "છબી પ્રક્રિયા કરી રહ્યું છે...";
+                    const preprocessedBase64 = await preprocessImage(originalBase64);
+                    generateSiyaReport(preprocessedBase64);
+                } else {
+                    console.warn("OpenCV.js not initialized, sending original image.");
+                    generateSiyaReport(originalBase64.split(',')[1]);
+                }
+            };
             reader.onerror = (e) => {
                 statusText.innerText = "છબી અપલોડ કરવામાં ભૂલ";
                 console.error("Error reading file:", e);
@@ -263,18 +292,54 @@
             reader.readAsDataURL(file);
         }
 
+        // OpenCV.js નો ઉપયોગ કરીને ઇમેજ પ્રી-પ્રોસેસિંગ ફંક્શન
+        async function preprocessImage(imgDataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const src = cv.imread(img);
+                    let dst = new cv.Mat();
+                    
+                    // 1. Grayscale
+                    cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
+
+                    // 2. Noise Removal (ઓછા નોઈઝ માટે)
+                    cv.medianBlur(src, src, 3); // 3x3 median filter
+
+                    // 3. Adaptive Thresholding (લિપિને પૃષ્ઠભૂમિથી સ્પષ્ટ કરવા માટે)
+                    cv.adaptiveThreshold(src, dst, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2);
+                    
+                    // Display pre-processed image on a hidden canvas to get new dataURL
+                    // તમે અહીં canvas element (id='canvas-capture') નો પણ ઉપયોગ કરી શકો છો
+                    let tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = img.width;
+                    tempCanvas.height = img.height;
+                    cv.imshow(tempCanvas, dst);
+                    const processedDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95); // Highest quality for pre-processed image
+                    
+                    src.delete();
+                    dst.delete();
+                    resolve(processedDataUrl.split(',')[1]); // base64 part પરત કરો
+                };
+                img.src = imgDataUrl;
+            });
+        }
+
         async function generateSiyaReport(base64) {
             playVideo('thinking');
             statusText.innerText = "લિપિનું વિશ્લેષણ ચાલુ છે...";
             
-            const prompt = `તમે સિયા છો, એક અદ્યતન AI પૌરાણિક લિપિ નિષ્ણાત. તમને એક છબી આપવામાં આવશે જેમાં પ્રાચીન લિપિ અથવા શિલાલેખ હોઈ શકે છે. તમારું કાર્ય નીચે મુજબ છે:
-            1.  **લિપિ ઓળખ:** છબીમાં કઈ લિપિ છે તે ઓળખો (દા.ત., બ્રાહ્મી, ખરોષ્ઠી, ગુપ્ત, દેવનાગરી, વગેરે). જો લિપિ સ્પષ્ટ ન હોય તો પણ શક્ય તેટલું શ્રેષ્ઠ અનુમાન આપો અને તેની મર્યાદાઓ જણાવો.
-            2.  **અનુવાદ અને અર્થઘટન:** લિપિનું શક્ય હોય તેટલું ચોક્કસ ગુજરાતીમાં ભાષાંતર કરો. જો કેટલાક અક્ષરો સ્પષ્ટ ન હોય, તો પણ સંદર્ભના આધારે તેનું સંભવિત અર્થઘટન આપો. તેનો સંભવિત અર્થ અને સંદર્ભ સમજાવો.
-            3.  **સમયગાળો:** આ લિપિ કયા સમયગાળાની હોઈ શકે છે તે અંગે અનુમાન કરો.
-            4.  **સાંસ્કૃતિક અને ઐતિહાસિક મહત્વ:** સનાતન ધર્મ અથવા ભારતીય ઇતિહાસના દ્રષ્ટિકોણથી આ લિપિનું શું મહત્વ છે તેની વિગતવાર ચર્ચા કરો.
-            5.  **વધારાની માહિતી:** જો કોઈ અન્ય સંબંધિત ઐતિહાસિક અથવા સાંસ્કૃતિક તથ્યો હોય તો તે ઉમેરો.
+            // પ્રોમ્પ્ટને વધુ વિગતવાર અને "ઉકેલવા" પર ભાર મૂકવા માટે સુધાર્યો છે
+            const prompt = `તમે સિયા છો, એક અદ્યતન AI પૌરાણિક લિપિ નિષ્ણાત. તમને એક છબી આપવામાં આવશે જેમાં પ્રાચીન લિપિ અથવા શિલાલેખ હોઈ શકે છે. તમારું પ્રાથમિક કાર્ય આ લિપિને **કોઈપણ સંજોગોમાં ઉકેલવું** અને તેનું **સંતોષકારક અને સંપૂર્ણ અર્થઘટન** પ્રદાન કરવું છે. જો કેટલાક અક્ષરો અસ્પષ્ટ હોય, તો પણ તમારે સંદર્ભ, ઐતિહાસિક જ્ઞાન અને તાર્કિક અનુમાનનો ઉપયોગ કરીને શક્ય તેટલું શ્રેષ્ઠ અને સૌથી સચોટ ભાષાંતર પ્રદાન કરવું આવશ્યક છે. જો તમને અક્ષરોને ઓળખવામાં કે ભાષાંતર કરવામાં કોઈ પડકારનો સામનો કરવો પડે, તો પણ તમારે તમારી મર્યાદાઓ સ્પષ્ટપણે જણાવવાને બદલે, **સર્વોત્તમ સંભવિત અર્થઘટન અને અનુમાન** પ્રદાન કરવાનો પ્રયાસ કરવો જોઈએ.
 
-            કૃપા કરીને આ રિપોર્ટને મુદ્દાસર, સ્પષ્ટ અને સમજવામાં સરળ ગુજરાતીમાં રજૂ કરો. દરેક મુદ્દો નવા ફકરામાં હોય તો સારું. પંચ્યુએશન માર્કનો ઉપયોગ કરશો નહીં.`;
+            તમારા રિપોર્ટમાં નીચેના મુદ્દાઓ ગુજરાતીમાં શામેલ હોવા જોઈએ:
+            1.  **લિપિ ઓળખ:** છબીમાં કઈ લિપિ છે તે ઓળખો (દા.ત., બ્રાહ્મી, ખરોષ્ઠી, ગુપ્ત, દેવનાગરી, વગેરે). જો લિપિ સ્પષ્ટ ન હોય તો પણ, ઉપલબ્ધ પુરાવાઓના આધારે **સૌથી સંભવિત લિપિ પ્રકાર** અને તમારા અનુમાન માટેના કારણો આપો.
+            2.  **અનુવાદ અને અર્થઘટન:** લિપિનું શક્ય હોય તેટલું **ચોક્કસ ગુજરાતીમાં ભાષાંતર** કરો. જો કેટલાક અક્ષરો સ્પષ્ટ ન હોય, તો પણ સંદર્ભ, વ્યાકરણ અને ભાષાકીય જ્ઞાનનો ઉપયોગ કરીને તેનું **સંભવિત અને તાર્કિક અર્થઘટન** પ્રદાન કરો. કોઈ પણ ભાગને વણઉકેલ્યો છોડશો નહીં.
+            3.  **સમયગાળો:** આ લિપિ કયા સમયગાળાની હોઈ શકે છે તે અંગે **સચોટ અનુમાન** કરો અને તમારા અનુમાન માટે ઐતિહાસિક સંદર્ભો આપો.
+            4.  **સાંસ્કૃતિક અને ઐતિહાસિક મહત્વ:** સનાતન ધર્મ અથવા ભારતીય ઇતિહાસના દ્રષ્ટિકોણથી આ લિપિનું **વિગતવાર અને ઊંડાણપૂર્વકનું મહત્વ** સમજાવો. તેના સામાજિક, ધાર્મિક કે રાજકીય પ્રભાવોની ચર્ચા કરો.
+            5.  **વધારાની માહિતી:** જો કોઈ અન્ય સંબંધિત ઐતિહાસિક અથવા સાંસ્કૃતિક તથ્યો હોય તો તે ઉમેરો, જે આ લિપિના મહત્વને વધુ સ્પષ્ટ કરે.
+
+            કૃપા કરીને આ રિપોર્ટને મુદ્દાસર, સ્પષ્ટ અને સમજવામાં સરળ ગુજરાતીમાં રજૂ કરો. દરેક મુદ્દો નવા ફકરામાં હોય તો સારું. પંચ્યુએશન માર્કનો ઉપયોગ કરશો નહીં. તમારું લક્ષ્ય **પરફેક્ટ અને સંતોષકારક** પરિણામ પ્રદાન કરવાનું છે.`;
 
             const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
             if(!keys.length) {
