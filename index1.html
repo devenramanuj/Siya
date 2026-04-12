@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Siya AI V3 - Script Decipher Expert</title>
+    <title>Siya AI - Script Expert</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: black; font-family: 'Segoe UI', sans-serif; user-select: none; }
@@ -20,7 +20,7 @@
         .report-header h2 { color: #ff4500; margin: 0; font-size: 22px; }
         .report-content { line-height: 1.6; font-size: 16px; max-height: 450px; overflow-y: auto; padding-right: 10px; }
         .report-footer { display: flex; gap: 10px; margin-top: 20px; }
-        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
         .copy-btn { background: #008cff; color: white; }
         .close-btn { background: #333; color: white; }
         input, select, textarea { width: 100%; padding: 10px; margin: 10px 0; background: #333; color: white; border: 1px solid #555; border-radius: 5px; box-sizing: border-box; }
@@ -28,7 +28,7 @@
         #mic-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column; align-items: center; width: 100%; }
         #status-text { color: white; margin-bottom: 15px; font-size: 14px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }
         .controls-row { display: flex; gap: 15px; align-items: center; justify-content: center; }
-        .round-btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 24px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .round-btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 24px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
         #mic-btn { background: #ff4500; }
         #gallery-btn { background: #00ff88; color: black; }
         #vision-btn { background: #008cff; }
@@ -54,8 +54,7 @@
             <h3>સિયા AI સેટિંગ્સ</h3>
             <input type="text" id="userNameInput" placeholder="તમારું નામ">
             <select id="geminiModelSelect">
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
             </select>
             <textarea id="geminiKeyInput" rows="3" placeholder="API Key..."></textarea>
             <button class="save-btn" onclick="saveSettings()">સેવ કરો</button>
@@ -64,13 +63,10 @@
 
     <div id="report-modal" class="modal">
         <div class="report-box">
-            <div class="report-header">
-                <h2>લિપિ ઉકેલ અને વિશ્લેષણ</h2>
-                <small id="report-date"></small>
-            </div>
-            <div id="report-body" class="report-content">ઉકેલી રહ્યા છીએ...</div>
+            <div class="report-header"><h2>લિપિ ઉકેલ રિપોર્ટ</h2></div>
+            <div id="report-body" class="report-content">વિશ્લેષણ ચાલુ છે...</div>
             <div class="report-footer">
-                <button class="action-btn copy-btn" onclick="copyReport()"><i class="fas fa-copy"></i> કોપી</button>
+                <button class="action-btn copy-btn" onclick="copyReport()">કોપી</button>
                 <button class="action-btn close-btn" onclick="closeReport()">બંધ કરો</button>
             </div>
         </div>
@@ -88,7 +84,7 @@
     <script>
         let userName = localStorage.getItem('vidushi_username') || "દેવેન્દ્રભાઈ";
         let geminiKeys = localStorage.getItem('vidushi_gemini_key') || "";
-        let selectedModel = localStorage.getItem('vidushi_model') || "gemini-2.0-flash";
+        let selectedModel = "gemini-2.5-flash";
         
         const videos = {
             silent: document.getElementById('silent-video'),
@@ -126,68 +122,44 @@
             reader.readAsDataURL(file);
         }
 
-        // --- ઈમેજની ધાર અને સ્પષ્ટતા વધારવા માટેનું ફિલ્ટર ---
-        function enhanceImage(base64Str, callback) {
-            const img = new Image();
-            img.onload = function() {
-                const tempCanvas = document.createElement('canvas');
-                const ctx = tempCanvas.getContext('2d');
-                const maxDim = 1200; // લિપિ ઉકેલવા માટે થોડી મોટી સાઈઝ
-                let w = img.width, h = img.height;
-                if (w > maxDim || h > maxDim) {
-                    if (w > h) { h *= maxDim / w; w = maxDim; } else { w *= maxDim / h; h = maxDim; }
-                }
-                tempCanvas.width = w; tempCanvas.height = h;
-                // High contrast to highlight text edges
-                ctx.filter = 'contrast(1.4) brightness(1.1) grayscale(100%)';
-                ctx.drawImage(img, 0, 0, w, h);
-                callback(tempCanvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
-            };
-            img.src = "data:image/jpeg;base64," + base64Str;
-        }
-
         async function generateSiyaReport(originalBase64) {
             playVideo('thinking');
-            statusText.innerText = "લિપિનું વિશ્લેષણ ચાલુ છે...";
+            statusText.innerText = "વિશ્લેષણ ચાલુ છે...";
             
-            enhanceImage(originalBase64, async (optimizedBase64) => {
-                const prompt = `તારું નામ સિયા છે. તું પ્રાચીન લિપિ, પાળિયા અને વંશાવલી ઉકેલવાની નિષ્ણાત છે.
-                તારું મુખ્ય કામ લખાણને 'વાંચવાનું' અને 'સમજાવવાનું' છે. 
-                ૧. લિપિ ઉકેલ: ફોટામાં જે અક્ષરો, શબ્દો કે સંખ્યાઓ દેખાય છે તેને ઓળખીને હૂબહૂ લખો. 
-                ૨. અર્થઘટન: તે લખાણનો અર્થ શું થાય છે (દા.ત. કોઈ નામ, સંવત, તિથિ, કે સ્થાન).
-                ૩. તારણ: તે લખાણ પાળિયો છે, શિલાલેખ છે કે વંશાવલીની નોંધ છે તે જણાવો.
-                ૪. જે શબ્દ સ્પષ્ટ ન હોય ત્યાં અનુમાન કરવાને બદલે પ્રશ્નાર્થ ચિહ્ન મૂકો.
-                ગુજરાતીમાં મુદ્દાસર અને વિગતવાર લિપિ ઉકેલ રિપોર્ટ આપજે.`;
+            const prompt = `તારું નામ સિયા છે. તું એક નિષ્પક્ષ લિપિ નિષ્ણાત છે. 
+            સાવધાન: આ એક નવો ફોટો છે. આગળની કોઈ પણ માહિતી ભૂલી જજે. 
+            તારું કામ ફોટામાં રહેલા લખાણને ઉકેલવાનું (Read and Decipher) છે. 
+            ૧. ફોટામાં કઈ લિપિ છે? 
+            ૨. અક્ષરો, નામ, સંવત કે તિથિ જે દેખાય તે હૂબહૂ જણાવો. 
+            ૩. જો પાળિયો હોય તો વીરતા અને જો વંશાવલી હોય તો પેઢીઓ વિશે જે દેખાય તે જ લખો. 
+            તારી જાતે કોઈ વિગત ઉમેરવી નહીં. ગુજરાતીમાં મુદ્દાસર રિપોર્ટ આપજે.`;
 
-                const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
-                const key = keys[0];
+            const key = geminiKeys.split(',')[0].trim();
 
-                try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: optimizedBase64 } }] }] })
-                    });
-                    const data = await res.json();
-                    const text = data.candidates[0].content.parts[0].text;
-                    document.getElementById('report-body').innerHTML = text.split('\n').map(p => `<p>${p}</p>`).join('');
-                    document.getElementById('report-modal').style.display = 'flex';
-                    playVideo('smiling');
-                    statusText.innerText = "લિપિ ઉકેલાઈ ગઈ છે";
-                    speak("લિપિનો રિપોર્ટ તૈયાર છે દેવેન્દ્રભાઈ");
-                } catch(e) {
-                    statusText.innerText = "ક્ષમા કરજો, ભૂલ આવી!";
-                    speak("વિશ્લેષણમાં સમસ્યા આવી છે");
-                    playVideo('silent');
-                }
-            });
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: originalBase64 } }] }] })
+                });
+                const data = await res.json();
+                const text = data.candidates[0].content.parts[0].text;
+                document.getElementById('report-body').innerHTML = text.split('\n').map(p => `<p>${p}</p>`).join('');
+                document.getElementById('report-modal').style.display = 'flex';
+                playVideo('smiling');
+                statusText.innerText = "રિપોર્ટ તૈયાર છે";
+                speak("લિપિનું વિશ્લેષણ પૂર્ણ થયું છે");
+            } catch(e) {
+                statusText.innerText = "એરર!";
+                speak("API કી અથવા ઇન્ટરનેટ તપાસો");
+                playVideo('silent');
+            }
         }
 
         function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; }
         function saveSettings() {
             localStorage.setItem('vidushi_username', document.getElementById('userNameInput').value);
             localStorage.setItem('vidushi_gemini_key', document.getElementById('geminiKeyInput').value);
-            localStorage.setItem('vidushi_model', document.getElementById('geminiModelSelect').value);
             location.reload();
         }
     </script>
