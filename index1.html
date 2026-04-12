@@ -205,7 +205,7 @@
             reader.readAsDataURL(file);
         }
 
-        /* --- [NEW] ઝાંખા ફોટાને સ્પષ્ટ કરવા માટેનું નવું ફંક્શન --- */
+        // ઈમેજ એન્હાન્સમેન્ટ ફંક્શન
         function enhanceImage(base64Str, callback) {
             const img = new Image();
             img.onload = function() {
@@ -213,35 +213,25 @@
                 const ctx = tempCanvas.getContext('2d');
                 tempCanvas.width = img.width;
                 tempCanvas.height = img.height;
-
-                // ગ્રેસ્કેલ અને હાઈ કોન્ટ્રાસ્ટ ફિલ્ટર લાગુ કરવું
-                ctx.filter = 'contrast(1.5) brightness(1.1) grayscale(100%)';
+                // ગ્રેસ્કેલ અને હાઈ કોન્ટ્રાસ્ટ ફિલ્ટર
+                ctx.filter = 'contrast(1.6) brightness(1.1) grayscale(100%)';
                 ctx.drawImage(img, 0, 0);
-
-                // પ્રોસેસ થયેલી ઈમેજ પાછી મોકલવી
                 callback(tempCanvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
             };
             img.src = "data:image/jpeg;base64," + base64Str;
         }
 
-        /* --- [UPDATED] વધુ પાવરફુલ વિશ્લેષણ ફંક્શન --- */
         async function generateSiyaReport(originalBase64) {
             playVideo('thinking');
-            statusText.innerText = "ડિજિટલ એન્હાન્સમેન્ટ અને વિશ્લેષણ ચાલુ છે...";
+            statusText.innerText = "નવું વિશ્લેષણ ચાલુ છે...";
             
-            // ફોટાને સ્પષ્ટ કર્યા પછી API કોલ કરવો
             enhanceImage(originalBase64, async (enhancedBase64) => {
-                
-                // પાવરફુલ સિસ્ટમ પ્રોમ્પ્ટ
-                const prompt = `તારું નામ સિયા છે. તું પૌરાણિક લિપિ અને શિલાલેખની નિષ્ણાત છે. 
-                આ ફોટો ઝાંખો હોઈ શકે છે, તેથી પથ્થર પરના શેડો (Shadows) અને કોતરણીની ધાર (Edges) પર ધ્યાન આપજે.
-                જો લિપિમાં કોઈ નામ અસ્પષ્ટ હોય, તો તેને સ્થાનિક વંશાવલીના સંદર્ભમાં (જેમ કે આથમણી પાટી, કલાભા, જેમાભા) તપાસજે.
-                રિપોર્ટમાં નીચેની વિગતો ખાસ આપજે:
-                ૧. ઓળખાયેલ નામ અને વંશ (વંશાવલી મુજબ).
-                ૨. સંવત અને તિથિનું સચોટ અનુમાન.
-                ૩. તે સમયના વારની ગણતરી.
-                ૪. સનાતન ધર્મ અને વીરતાની દ્રષ્ટિએ મહત્વ.
-                ગુજરાતીમાં પંચ્યુએશન માર્ક વગર મુદ્દાસર જવાબ આપજે.`;
+                // તટસ્થ (Neutral) પ્રોમ્પ્ટ - કોઈ જૂના નામો હાર્ડકોડ નથી
+                const prompt = `તારું નામ સિયા છે. તું પ્રાચીન લિપિ અને વંશાવલીની નિષ્ણાત છે. 
+                સાવધાન: આ એક નવો અને અલગ ફોટો છે. આગળની કોઈ પણ ચર્ચા કે નામોને ધ્યાનમાં લીધા વગર માત્ર આ ફોટામાં જે અક્ષરો, નામો અને વિગતો દેખાય છે તેનું જ વિશ્લેષણ કરજે. 
+                જો ફોટો વંશાવલીનો હોય, તો તેમાં જે નવા નામો, ગામની પાટી કે પેઢીઓ દેખાય તે જ જણાવજે. 
+                જો ફોટો પાળિયાનો હોય, તો તેના પરની કોતરણી, પંચાંગ વિગતો (સંવત, તિથિ, વાર) ઓળખજે.
+                વિગતવાર રિપોર્ટ ગુજરાતીમાં પંચ્યુએશન માર્ક વગર મુદ્દાસર આપજે.`;
 
                 const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
                 if(!keys.length) return speak("સેટિંગ્સમાં API કી ઉમેરો");
@@ -254,16 +244,16 @@
                         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: enhancedBase64 } }] }] })
                     });
                     const data = await res.json();
-                    const reportText = data.candidates[0].content.parts[0].text;
-
-                    document.getElementById('report-date').innerText = new Date().toLocaleDateString('gu-IN');
-                    document.getElementById('report-body').innerHTML = reportText.split('\n').map(line => `<p>${line}</p>`).join('');
-                    document.getElementById('report-modal').style.display = 'flex';
                     
-                    playVideo('smiling');
-                    statusText.innerText = "રિપોર્ટ તૈયાર છે";
-                    speak("મેં લિપિનું ઝીણવટભર્યું વિશ્લેષણ કરી લીધું છે લેખિત રિપોર્ટ તમારી સ્ક્રીન પર છે");
-
+                    if (data.candidates && data.candidates[0].content.parts[0].text) {
+                        const reportText = data.candidates[0].content.parts[0].text;
+                        document.getElementById('report-date').innerText = new Date().toLocaleDateString('gu-IN');
+                        document.getElementById('report-body').innerHTML = reportText.split('\n').map(line => `<p>${line}</p>`).join('');
+                        document.getElementById('report-modal').style.display = 'flex';
+                        playVideo('smiling');
+                        statusText.innerText = "નવો રિપોર્ટ તૈયાર છે";
+                        speak("મેં લિપિનું નવું વિશ્લેષણ કરી લીધું છે રિપોર્ટ તમારી સ્ક્રીન પર છે");
+                    }
                 } catch(e) { 
                     speak("ક્ષમા કરજો અત્યારે વિશ્લેષણ થઈ શક્યું નથી");
                     playVideo('silent');
