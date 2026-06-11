@@ -250,6 +250,175 @@
             localStorage.setItem('vidushi_model', document.getElementById('geminiModelSelect').value);
             location.reload();
         }
+    <script>
+        let userName = localStorage.getItem('vidushi_username') || "દેવેન્દ્રભાઈ";
+        let geminiKeys = localStorage.getItem('vidushi_gemini_key') || "";
+        let selectedModel = "gemini-2.5-flash"; // તમારા નિયમ મુજબ ફિક્સ રાખેલું મોડેલ
+        
+        const videos = {
+            silent: document.getElementById('silent-video'),
+            talking: document.getElementById('talking-video'),
+            thinking: document.getElementById('thinking-video'),
+            smiling: document.getElementById('smiling-video')
+        };
+        const statusText = document.getElementById('status-text');
+        const cameraFeed = document.getElementById('camera-feed');
+        const canvas = document.getElementById('canvas-capture');
+
+        let isAiSpeaking = false, visionMode = false, cameraStream = null;
+
+        window.onload = () => {
+            playVideo('smiling');
+            setTimeout(() => { 
+                speak(`જય શ્રી કૃષ્ણ ${userName} મારું નામ સિયા છે આજે આપણે કયો પાળિયો કે શિલાલેખ ઉકેલવો છે`); 
+            }, 1000);
+        };
+
+        function playVideo(type) {
+            Object.values(videos).forEach(v => { v.style.display = 'none'; v.pause(); });
+            if(videos[type]) { 
+                videos[type].style.display = 'block'; 
+                videos[type].play().catch(()=>{}); 
+            }
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            // સ્પીચ બોલવા માટે ટેક્સ્ટને ક્લીન કરી નાખવી જેથી અટક્યા વગર બોલે
+            let clean = text.replace(/[.,!?;:*#_\-]/g, "");
+            isAiSpeaking = true;
+            const u = new SpeechSynthesisUtterance(clean);
+            u.lang = 'gu-IN';
+            u.rate = 0.85;
+            u.onstart = () => playVideo('talking');
+            u.onend = () => { 
+                if(isAiSpeaking) {
+                    playVideo('smiling'); 
+                    isAiSpeaking = false; 
+                    setTimeout(() => { if(!isAiSpeaking) playVideo('silent'); }, 3000);
+                }
+            };
+            window.speechSynthesis.speak(u);
+        }
+
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+            isAiSpeaking = false;
+            playVideo('silent');
+            statusText.innerText = "અવાજ બંધ કર્યો";
+        }
+
+        function closeReport() {
+            document.getElementById('report-modal').style.display = 'none';
+            stopSpeech();
+        }
+
+        function copyReport() {
+            const text = document.getElementById('report-body').innerText;
+            navigator.clipboard.writeText(text);
+            alert("રિપોર્ટ કોપી થઈ ગયો છે");
+        }
+
+        async function activateVision() {
+            if(visionMode) { captureAndAnalyze(); return; }
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                cameraFeed.srcObject = cameraStream;
+                cameraFeed.style.display = 'block';
+                visionMode = true;
+                statusText.innerText = "કેમેરા સામે શિલાલેખ રાખો";
+                speak("કૃપા કરીને શિલાલેખ કે પાળિયા સામે કેમેરો સ્થિર રાખો અને બટન દબાવો");
+            } catch(e) { alert("કેમેરો ખોલવામાં નિષ્ફળ"); }
+        }
+
+        async function captureAndAnalyze() {
+            canvas.width = cameraFeed.videoWidth;
+            canvas.height = cameraFeed.videoHeight;
+            canvas.getContext('2d').drawImage(cameraFeed, 0, 0);
+            if(cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+            cameraFeed.style.display = 'none';
+            visionMode = false;
+            generateSiyaReport(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]);
+        }
+
+        function handleGalleryUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => generateSiyaReport(e.target.result.split(',')[1]);
+            reader.readAsDataURL(file);
+        }
+
+        // પાળિયા અને શિલાલેખ માટેનો પરફેક્ટ એક્સપર્ટ પ્રોમ્પ્ટ
+        const SIYA_EXPERT_PROMPT = `તમે ઇન્ડિયન આર્કિઓલોજી અને પ્રાચીન લિપિશાસ્ત્રના એક્સપર્ટ 'સિયા' છો. 
+આ ફોટો ગુજરાતના પાળિયા અથવા પૌરાણિક શિલાલેખનો છે. પથ્થરના ઘસારા અને આકૃતિઓ (સૂર્ય, ચંદ્ર, ઘોડેસવાર કે હસ્તરેખા) ને ઓળખો. જે અક્ષરો સ્પષ્ટ ન હોય તેનો ખોટો અંદાજ ન લગાવવો. 
+
+કૃપા કરીને નીચે મુજબ મુદ્દાસર ગુજરાતીમાં વિશ્લેષણ આપો:
+- પાળિયા કે શિલાલેખનો પ્રકાર
+- તેના પર દેખાતી મહત્વની આકૃતિઓ
+- લિપિ (બ્રાહ્મી, દેવનાગરી, જૂની ગુજરાતી કે લોકલ મહાજની/બારોટી)
+- સંવત, શહીદ વીરનું નામ કે શહીદીનું કારણ (જો વંચાતું હોય તો જ લખવું)
+- સનાતન ધર્મ અને ઇતિહાસની દ્રષ્ટિએ તેનું મહત્વ`;
+
+        async function generateSiyaReport(base64) {
+            playVideo('thinking');
+            statusText.innerText = "સિયા વિશ્લેષણ કરે છે...";
+            
+            const keys = geminiKeys.split(',').map(k => k.trim()).filter(k => k);
+            if(!keys.length) return speak("સેટિંગ્સમાં API કી ઉમેરો");
+            const key = keys[Math.floor(Math.random() * keys.length)];
+
+            try {
+                // અહીં ફિક્સ 'inlineData' પેરામીટર સેટ કર્યો છે જે ઈમેજ ડેટા મોકલશે
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        contents: [{ 
+                            parts: [
+                                { text: SIYA_EXPERT_PROMPT }, 
+                                { inlineData: { mimeType: "image/jpeg", data: base64 } } 
+                            ] 
+                        }] 
+                    })
+                });
+                
+                const data = await res.json();
+                const reportText = data.candidates[0].content.parts[0].text;
+
+                document.getElementById('report-date').innerText = new Date().toLocaleDateString('gu-IN');
+                // માર્કડાઉન ફોર્મેટિંગને સપોર્ટ કરવા માટે ક્લીન બોક્સ
+                document.getElementById('report-body').innerHTML = reportText.split('\n').map(line => {
+                    if(line.trim().startsWith('-') || line.trim().startsWith('*')) {
+                        return `<li>${line.replace(/^[*\-\s]+/, '')}</li>`;
+                    }
+                    return `<p>${line}</p>`;
+                }).join('');
+                
+                document.getElementById('report-modal').style.display = 'flex';
+                
+                playVideo('smiling');
+                statusText.innerText = "રિપોર્ટ તૈયાર છે";
+                speak("મેં લિપિ અને પાળિયાનું સફળતાપૂર્વક વિશ્લેષણ કરી લીધું છે લેખિત રિપોર્ટ સ્ક્રીન પર છે");
+
+            } catch(e) { 
+                playVideo('silent');
+                statusText.innerText = "ભૂલ આવી!";
+                speak("ક્ષમા કરજો અત્યારે આ ફોટોનું વિશ્લેષણ થઈ શક્યું નથી");
+            }
+        }
+
+        function openSettings() { 
+            document.getElementById('settings-modal').style.display = 'flex';
+            document.getElementById('userNameInput').value = userName;
+            document.getElementById('geminiKeyInput').value = geminiKeys;
+        }
+
+        function saveSettings() {
+            localStorage.setItem('vidushi_username', document.getElementById('userNameInput').value);
+            localStorage.setItem('vidushi_gemini_key', document.getElementById('geminiKeyInput').value);
+            location.reload();
+        }
 
         function startConversation() { 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -270,12 +439,12 @@
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${key}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: "તારું નામ સિયા છે પંચ્યુએશન વગર ગુજરાતીમાં જવાબ આપ: " + text }] }] })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: "તારું નામ સિયા છે. ટૂંકમાં ગુજરાતીમાં જવાબ આપ: " + text }] }] })
                 });
                 const data = await res.json();
-                speak(data.candidates[0].content.parts[0].text);
-            } catch(e) { speak("નેટવર્ક ચેક કરો"); }
+                const aiReply = data.candidates[0].content.parts[0].text;
+                statusText.innerText = "સિયા બોલે છે...";
+                speak(aiReply);
+            } catch(e) { speak("નેટવર્ક ચેક કરો દેવેન્દ્રભાઈ"); }
         }
     </script>
-</body>
-</html>
